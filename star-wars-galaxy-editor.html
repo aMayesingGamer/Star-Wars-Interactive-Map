@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Star Wars Galaxy Map Editor</title>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+        #root {
+            width: 100vw;
+            height: 100vh;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useRef, useEffect } = React;
+
+        // Icon components - keeping only what we need
+        const Search = () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>;
+        const Navigation = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>;
+        const Zap = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>;
+        const Users = () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>;
+        const MapPin = () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>;
+        const X = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>;
+        const Info = () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>;
+        const Upload = () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>;
+        const Plus = () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 12h14"/><path d="M12 5v14"/></svg>;
+        const Edit2 = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>;
+        const Trash2 = () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>;
+        const Save = () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>;
+        const Move = () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="5 9 2 12 5 15"/><polyline points="9 5 12 2 15 5"/><polyline points="15 19 12 22 9 19"/><polyline points="19 9 22 12 19 15"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="12" y1="2" x2="12" y2="22"/></svg>;
+        const Image = () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>;
+        const Check = () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="20 6 9 17 4 12"/></svg>;
+        const Lock = () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>;
+        const Unlock = () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg>;
+
+        const INITIAL_PLANETS = [
+            { id: 1, name: 'Coruscant', region: 'Core', x: 50, y: 50, faction: 'Galactic Republic', population: 'Trillions', trade: true, events: ['Senate Session'], coords: 'L-9', size: 1.2, image: null, rotationPeriod: '24 hours', atmosphere: 'Breathable', climate: 'Temperate', terrain: 'Urban cityscape', locked: false },
+            { id: 2, name: 'Tatooine', region: 'Outer Rim', x: 65, y: 65, faction: 'Hutts', population: 'Thousands', trade: true, events: [], coords: 'R-16', size: 0.8, image: null, rotationPeriod: '23 hours', atmosphere: 'Breathable', climate: 'Arid', terrain: 'Desert', locked: false },
+        ];
+
+        const REGIONS = ['Deep Core', 'Core', 'Colonies', 'Inner Rim', 'Expansion Region', 'Mid Rim', 'Outer Rim', 'Unknown Regions'];
+        const FACTIONS = ['Galactic Republic', 'Galactic Empire', 'Rebel Alliance', 'Separatists', 'First Order', 'Independent', 'Hutts', 'Mandalorians'];
+
+        function StarWarsGalaxyMapEditor() {
+            const [planets, setPlanets] = useState(INITIAL_PLANETS);
+            const [selectedPlanet, setSelectedPlanet] = useState(null);
+            const [editingPlanetId, setEditingPlanetId] = useState(null);
+            const [searchTerm, setSearchTerm] = useState('');
+            const [selectedRegion, setSelectedRegion] = useState('All Regions');
+            const [selectedFaction, setSelectedFaction] = useState('All Factions');
+            const [showEvents, setShowEvents] = useState(true);
+            const [scale, setScale] = useState(1);
+            const [position, setPosition] = useState({ x: 0, y: 0 });
+            const [isDragging, setIsDragging] = useState(false);
+            const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+            const [mapImage, setMapImage] = useState(null);
+            const [showUploadPrompt, setShowUploadPrompt] = useState(true);
+            const [editMode, setEditMode] = useState(false);
+            const [movingPlanet, setMovingPlanet] = useState(null);
+            const [showAddPlanetForm, setShowAddPlanetForm] = useState(false);
+            const [showEventForm, setShowEventForm] = useState(false);
+            const [showPlanetImageUpload, setShowPlanetImageUpload] = useState(null);
+            
+            const mapRef = useRef(null);
+            const fileInputRef = useRef(null);
+            const planetImageInputRef = useRef(null);
+
+            const [newPlanet, setNewPlanet] = useState({
+                name: '', region: 'Core', faction: 'Galactic Republic', population: '', coords: '', trade: false, 
+                size: 1.0, x: 50, y: 50, image: null, rotationPeriod: '', atmosphere: '', climate: '', terrain: '', locked: false
+            });
+
+            const [editingPlanetData, setEditingPlanetData] = useState(null);
+            const [newEvent, setNewEvent] = useState('');
+
+            const filteredPlanets = planets.filter(planet => {
+                const matchesSearch = planet.name.toLowerCase().includes(searchTerm.toLowerCase());
+                const matchesRegion = selectedRegion === 'All Regions' || planet.region === selectedRegion;
+                const matchesFaction = selectedFaction === 'All Factions' || planet.faction === selectedFaction;
+                return matchesSearch && matchesRegion && matchesFaction;
+            });
+
+            const handleImageUpload = (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (event) => { setMapImage(event.target.result); setShowUploadPrompt(false); };
+                    reader.readAsDataURL(file);
+                }
+            };
+
+            const handlePlanetImageUpload = (e, planetId) => {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                        const imageData = event.target.result;
+                        if (planetId === 'new') {
+                            setNewPlanet({ ...newPlanet, image: imageData });
+                        } else if (planetId === 'editing') {
+                            setEditingPlanetData({ ...editingPlanetData, image: imageData });
+                        }
+                        setShowPlanetImageUpload(null);
+                    };
+                    reader.readAsDataURL(file);
+                }
+            };
+
+            const handleWheel = (e) => {
+                e.preventDefault();
+                const delta = e.deltaY * -0.001;
+                setScale(Math.min(Math.max(0.5, scale + delta), 3));
+            };
+
+            const handleMouseDown = (e) => {
+                if (e.target.closest('.planet-marker') || e.target.closest('.sidebar')) return;
+                
+                // If moving a planet, stop moving it
+                if (movingPlanet) {
+                    setMovingPlanet(null);
+                    return;
+                }
+                
+                setIsDragging(true);
+                setDragStart({ x: e.clientX - position.x, y: e.clientY - position.y });
+            };
+
+            const handleMouseMove = (e) => {
+                if (isDragging) {
+                    setPosition({ x: e.clientX - dragStart.x, y: e.clientY - dragStart.y });
+                }
+
+                if (movingPlanet && mapRef.current) {
+                    // Get the transformed container element
+                    const transformedContainer = mapRef.current.querySelector('.absolute.inset-0');
+                    if (transformedContainer) {
+                        const rect = transformedContainer.getBoundingClientRect();
+                        // Direct calculation relative to the transformed container
+                        const x = ((e.clientX - rect.left) / rect.width) * 100;
+                        const y = ((e.clientY - rect.top) / rect.height) * 100;
+                        setPlanets(planets.map(p => 
+                            p.id === movingPlanet.id ? { ...p, x: Math.max(0, Math.min(100, x)), y: Math.max(0, Math.min(100, y)) } : p
+                        ));
+                    }
+                }
+            };
+
+            const handleMouseUp = () => {
+                setIsDragging(false);
+                // Don't auto-stop moving - only stop when clicking planet again or clicking map
+            };
+
+            const handleAddPlanet = () => {
+                if (!newPlanet.name) return;
+                setPlanets([...planets, { id: Math.max(...planets.map(p => p.id), 0) + 1, ...newPlanet, events: [] }]);
+                setNewPlanet({ name: '', region: 'Core', faction: 'Galactic Republic', population: '', coords: '', trade: false, size: 1.0, x: 50, y: 50, image: null, rotationPeriod: '', atmosphere: '', climate: '', terrain: '', locked: false });
+                setShowAddPlanetForm(false);
+            };
+
+            const handleStartEditPlanet = (planet) => {
+                setEditingPlanetId(planet.id);
+                setEditingPlanetData({ ...planet });
+            };
+
+            const handleSaveEditPlanet = () => {
+                if (!editingPlanetData) return;
+                setPlanets(planets.map(p => p.id === editingPlanetId ? editingPlanetData : p));
+                if (selectedPlanet?.id === editingPlanetId) setSelectedPlanet(editingPlanetData);
+                setEditingPlanetId(null);
+                setEditingPlanetData(null);
+            };
+
+            const handleCancelEditPlanet = () => {
+                setEditingPlanetId(null);
+                setEditingPlanetData(null);
+            };
+
+            const handleDeletePlanet = (planetId) => {
+                if (confirm('Are you sure you want to delete this planet?')) {
+                    setPlanets(planets.filter(p => p.id !== planetId));
+                    if (selectedPlanet?.id === planetId) setSelectedPlanet(null);
+                }
+            };
+
+            const handleToggleLock = (planetId) => {
+                setPlanets(planets.map(p => 
+                    p.id === planetId ? { ...p, locked: !p.locked } : p
+                ));
+                
+                if (selectedPlanet?.id === planetId) {
+                    setSelectedPlanet({ ...selectedPlanet, locked: !selectedPlanet.locked });
+                }
+                
+                // If we're locking the planet we're currently moving, stop moving it
+                const planet = planets.find(p => p.id === planetId);
+                if (movingPlanet?.id === planetId && !planet?.locked) {
+                    setMovingPlanet(null);
+                }
+            };
+
+            const handleAddEvent = () => {
+                if (!newEvent || !selectedPlanet) return;
+                setPlanets(planets.map(p => p.id === selectedPlanet.id ? { ...p, events: [...p.events, newEvent] } : p));
+                setSelectedPlanet({ ...selectedPlanet, events: [...selectedPlanet.events, newEvent] });
+                setNewEvent('');
+                setShowEventForm(false);
+            };
+
+            const handleRemoveEvent = (planetId, eventIndex) => {
+                setPlanets(planets.map(p => p.id === planetId ? { ...p, events: p.events.filter((_, i) => i !== eventIndex) } : p));
+                if (selectedPlanet?.id === planetId) setSelectedPlanet({ ...selectedPlanet, events: selectedPlanet.events.filter((_, i) => i !== eventIndex) });
+            };
+
+            const handleSaveData = () => {
+                const data = { planets, timestamp: new Date().toISOString() };
+                const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'star-wars-galaxy-data.json';
+                a.click();
+            };
+
+            const handleLoadData = (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                        try {
+                            const data = JSON.parse(event.target.result);
+                            setPlanets(data.planets || []);
+                        } catch (error) {
+                            alert('Error loading data file');
+                        }
+                    };
+                    reader.readAsText(file);
+                }
+            };
+
+            const getFactionColor = (faction) => {
+                const colors = { 
+                    'Galactic Republic': '#4A90E2', 
+                    'Galactic Empire': '#E74C3C', 
+                    'Rebel Alliance': '#F39C12', 
+                    'Separatists': '#C0392B',
+                    'First Order': '#8B0000', 
+                    'Independent': '#27AE60',
+                    'Hutts': '#9B59B6', 
+                    'Mandalorians': '#95A5A6' 
+                };
+                return colors[faction] || '#ECF0F1';
+            };
+
+            useEffect(() => {
+                const map = mapRef.current;
+                if (map) {
+                    map.addEventListener('wheel', handleWheel, { passive: false });
+                    return () => map.removeEventListener('wheel', handleWheel);
+                }
+            }, [scale]);
+
+            return (
+                <div className="w-full h-screen bg-black text-white overflow-hidden flex">
+                    {/* Sidebar - truncated for space, keeping structure */}
+                    <div className="sidebar w-80 bg-gray-900 border-r border-gray-700 flex flex-col z-10 overflow-y-auto">
+                        <div className="p-6 border-b border-gray-700">
+                            <h1 className="text-2xl font-bold mb-1">STAR WARS</h1>
+                            <p className="text-sm text-gray-400">Galaxy Map Editor</p>
+                            <p className="text-xs text-blue-400 mt-2 italic">"A long time ago in a galaxy far, far away...."</p>
+                            
+                            <div className="mt-4 space-y-2">
+                                <button onClick={() => fileInputRef.current?.click()} className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded text-sm transition-colors">
+                                    <Upload /> {mapImage ? 'Change Map' : 'Upload Map'}
+                                </button>
+                                
+                                <div className="flex gap-2">
+                                    <button onClick={handleSaveData} className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 rounded text-sm transition-colors">
+                                        <Save /> Save
+                                    </button>
+                                    
+                                    <label className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded text-sm transition-colors cursor-pointer">
+                                        <Upload /> Load
+                                        <input type="file" accept=".json" onChange={handleLoadData} className="hidden" />
+                                    </label>
+                                </div>
+                            </div>
+                            
+                            <input ref={fileInputRef} type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
+                            <input ref={planetImageInputRef} type="file" accept="image/png,image/gif,image/svg+xml" onChange={(e) => handlePlanetImageUpload(e, showPlanetImageUpload)} className="hidden" />
+                        </div>
+
+                        <div className="p-4 border-b border-gray-700">
+                            <button onClick={() => setEditMode(!editMode)} className={`w-full flex items-center justify-center gap-2 px-4 py-2 rounded text-sm transition-colors ${editMode ? 'bg-orange-600 hover:bg-orange-700' : 'bg-gray-700 hover:bg-gray-600'}`}>
+                                <Edit2 /> {editMode ? 'Exit Edit Mode' : 'Enter Edit Mode'}
+                            </button>
+                        </div>
+
+                        {/* Add Planet Button */}
+                        {editMode && (
+                            <div className="p-4 border-b border-gray-700">
+                                <button onClick={() => setShowAddPlanetForm(!showAddPlanetForm)} className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded text-sm transition-colors">
+                                    <Plus /> Add New Planet
+                                </button>
+                                
+                                {showAddPlanetForm && (
+                                    <div className="mt-4 space-y-3 bg-gray-800 p-3 rounded max-h-96 overflow-y-auto">
+                                        <input type="text" placeholder="Planet Name" value={newPlanet.name} onChange={(e) => setNewPlanet({ ...newPlanet, name: e.target.value })} className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded text-sm" />
+                                        
+                                        <select value={newPlanet.region} onChange={(e) => setNewPlanet({ ...newPlanet, region: e.target.value })} className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded text-sm">
+                                            {REGIONS.map(region => <option key={region} value={region}>{region}</option>)}
+                                        </select>
+                                        
+                                        <input type="text" placeholder="Faction" value={newPlanet.faction} onChange={(e) => setNewPlanet({ ...newPlanet, faction: e.target.value })} className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded text-sm" />
+                                        
+                                        <input type="text" placeholder="Population (e.g., Billions)" value={newPlanet.population} onChange={(e) => setNewPlanet({ ...newPlanet, population: e.target.value })} className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded text-sm" />
+                                        
+                                        <input type="text" placeholder="Coordinates (e.g., L-9)" value={newPlanet.coords} onChange={(e) => setNewPlanet({ ...newPlanet, coords: e.target.value })} className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded text-sm" />
+
+                                        <input type="text" placeholder="Rotation Period (e.g., 24 hours)" value={newPlanet.rotationPeriod} onChange={(e) => setNewPlanet({ ...newPlanet, rotationPeriod: e.target.value })} className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded text-sm" />
+
+                                        <input type="text" placeholder="Atmosphere (e.g., Breathable)" value={newPlanet.atmosphere} onChange={(e) => setNewPlanet({ ...newPlanet, atmosphere: e.target.value })} className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded text-sm" />
+
+                                        <input type="text" placeholder="Climate (e.g., Temperate)" value={newPlanet.climate} onChange={(e) => setNewPlanet({ ...newPlanet, climate: e.target.value })} className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded text-sm" />
+
+                                        <input type="text" placeholder="Terrain (e.g., Mountains, forests)" value={newPlanet.terrain} onChange={(e) => setNewPlanet({ ...newPlanet, terrain: e.target.value })} className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded text-sm" />
+                                        
+                                        <div>
+                                            <label className="text-xs text-gray-400 mb-1 block">Size: {newPlanet.size.toFixed(1)}x</label>
+                                            <input type="range" min="0.3" max="2.5" step="0.1" value={newPlanet.size} onChange={(e) => setNewPlanet({ ...newPlanet, size: parseFloat(e.target.value) })} className="w-full" />
+                                        </div>
+                                        
+                                        <div>
+                                            {newPlanet.image ? (
+                                                <div className="flex items-center gap-2">
+                                                    <img src={newPlanet.image} alt="Preview" className="w-12 h-12 object-contain" />
+                                                    <button onClick={() => setNewPlanet({ ...newPlanet, image: null })} className="flex-1 px-3 py-2 bg-red-600 hover:bg-red-700 rounded text-xs">Remove Image</button>
+                                                </div>
+                                            ) : (
+                                                <button onClick={() => { setShowPlanetImageUpload('new'); planetImageInputRef.current?.click(); }} className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-gray-700 hover:bg-gray-600 rounded text-xs"><Image /> Upload Planet Image (PNG)</button>
+                                            )}
+                                        </div>
+                                        
+                                        <label className="flex items-center gap-2 text-sm">
+                                            <input type="checkbox" checked={newPlanet.trade} onChange={(e) => setNewPlanet({ ...newPlanet, trade: e.target.checked })} className="w-4 h-4" />
+                                            Trade Hub
+                                        </label>
+                                        
+                                        <div className="flex gap-2">
+                                            <button onClick={handleAddPlanet} className="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 rounded text-sm">Add Planet</button>
+                                            <button onClick={() => setShowAddPlanetForm(false)} className="flex-1 px-4 py-2 bg-gray-600 hover:bg-gray-700 rounded text-sm">Cancel</button>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        <div className="p-4 border-b border-gray-700">
+                            <div className="relative mb-3">
+                                <div className="absolute left-3 top-2.5"><Search /></div>
+                                <input type="text" placeholder="Search planets..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full pl-10 pr-4 py-2 bg-gray-800 border border-gray-700 rounded text-sm focus:outline-none focus:border-blue-500" />
+                            </div>
+                            
+                            <div className="space-y-3">
+                                <div>
+                                    <label className="text-xs text-gray-400 mb-1 block">Region</label>
+                                    <select value={selectedRegion} onChange={(e) => setSelectedRegion(e.target.value)} className="w-full p-2 bg-gray-800 border border-gray-700 rounded text-sm focus:outline-none focus:border-blue-500">
+                                        <option value="All Regions">All Regions</option>
+                                        {REGIONS.map(region => <option key={region} value={region}>{region}</option>)}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="text-xs text-gray-400 mb-1 block">Faction</label>
+                                    <select value={selectedFaction} onChange={(e) => setSelectedFaction(e.target.value)} className="w-full p-2 bg-gray-800 border border-gray-700 rounded text-sm focus:outline-none focus:border-blue-500">
+                                        <option value="All Factions">All Factions</option>
+                                        {FACTIONS.map(faction => <option key={faction} value={faction}>{faction}</option>)}
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div className="mt-3 space-y-2">
+                                <label className="flex items-center justify-between cursor-pointer">
+                                    <span className="text-sm">Active Events</span>
+                                    <input type="checkbox" checked={showEvents} onChange={(e) => setShowEvents(e.target.checked)} className="w-4 h-4" />
+                                </label>
+                            </div>
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto p-4">
+                            <h3 className="text-xs text-gray-400 mb-2">PLANETS ({filteredPlanets.length})</h3>
+                            <div className="space-y-2">
+                                {filteredPlanets.map(planet => (
+                                    <div key={planet.id} className={`relative p-3 rounded border transition-colors ${selectedPlanet?.id === planet.id ? 'bg-blue-900 border-blue-500' : 'bg-gray-800 border-gray-700 hover:border-gray-600'}`}>
+                                        <div className="cursor-pointer" onClick={() => setSelectedPlanet(planet)}>
+                                            <div className="flex items-start justify-between">
+                                                <div className="flex items-center gap-2">
+                                                    {planet.image && <img src={planet.image} alt={planet.name} className="w-6 h-6 object-contain" />}
+                                                    <div>
+                                                        <div className="font-medium text-sm">{planet.name}</div>
+                                                        <div className="text-xs text-gray-400">{planet.region}</div>
+                                                    </div>
+                                                </div>
+                                                <div className="w-3 h-3 rounded-full mt-1" style={{ backgroundColor: getFactionColor(planet.faction) }} />
+                                            </div>
+                                            {planet.events?.length > 0 && showEvents && (
+                                                <div className="mt-2 flex items-center gap-1 text-xs text-yellow-400">
+                                                    <Zap className="w-3 h-3" />
+                                                    {planet.events[0]}
+                                                </div>
+                                            )}
+                                        </div>
+                                        
+                                        {editMode && (
+                                            <div className="mt-2 flex gap-2">
+                                                <button 
+                                                    onClick={() => setMovingPlanet(planet)} 
+                                                    disabled={planet.locked}
+                                                    className={`flex-1 flex items-center justify-center gap-1 px-2 py-1 rounded text-xs ${
+                                                        planet.locked 
+                                                            ? 'bg-gray-700 text-gray-500 cursor-not-allowed' 
+                                                            : 'bg-blue-600 hover:bg-blue-700'
+                                                    }`}
+                                                >
+                                                    <Move /> Move
+                                                </button>
+                                                <button 
+                                                    onClick={() => handleToggleLock(planet.id)} 
+                                                    className={`flex-1 flex items-center justify-center gap-1 px-2 py-1 rounded text-xs ${
+                                                        planet.locked 
+                                                            ? 'bg-yellow-600 hover:bg-yellow-700' 
+                                                            : 'bg-gray-600 hover:bg-gray-700'
+                                                    }`}
+                                                >
+                                                    {planet.locked ? <><Lock /> Unlock</> : <><Unlock /> Lock</>}
+                                                </button>
+                                                <button onClick={() => handleDeletePlanet(planet.id)} className="flex-1 flex items-center justify-center gap-1 px-2 py-1 bg-red-600 hover:bg-red-700 rounded text-xs">
+                                                    <Trash2 /> Delete
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Map Container */}
+                    <div className="flex-1 relative overflow-hidden">
+                        <div ref={mapRef} className="w-full h-full relative" onMouseDown={handleMouseDown} onMouseMove={handleMouseMove} onMouseUp={handleMouseUp} onMouseLeave={handleMouseUp} style={{ cursor: isDragging ? 'grabbing' : movingPlanet ? 'crosshair' : 'grab' }}>
+                            <div className="absolute inset-0 pointer-events-none" style={{ transform: `translate(${position.x}px, ${position.y}px) scale(${scale})`, transformOrigin: 'center center' }}>
+                                {mapImage ? (
+                                    <div className="relative w-full h-full flex items-center justify-center">
+                                        <img src={mapImage} alt="Star Wars Galaxy Map" className="max-w-none" style={{ width: '150%', height: '150%', objectFit: 'contain' }} />
+                                    </div>
+                                ) : (
+                                    <div className="absolute inset-0 opacity-30">
+                                        {[...Array(200)].map((_, i) => <div key={i} className="absolute w-1 h-1 bg-white rounded-full" style={{ left: `${Math.random() * 100}%`, top: `${Math.random() * 100}%`, opacity: Math.random() * 0.7 + 0.3 }} />)}
+                                    </div>
+                                )}
+
+                                {filteredPlanets.map(planet => {
+                                    const planetSize = (planet.size || 1.0) * 16;
+                                    return (
+                                        <div key={planet.id} className="planet-marker absolute cursor-pointer group pointer-events-auto" style={{ left: `${planet.x}%`, top: `${planet.y}%`, transform: 'translate(-50%, -50%)', zIndex: movingPlanet?.id === planet.id ? 1000 : 1 }} onClick={(e) => { 
+                                            e.stopPropagation(); 
+                                            if (editMode) {
+                                                // Can't move locked planets
+                                                if (planet.locked) {
+                                                    setSelectedPlanet(planet);
+                                                    return;
+                                                }
+                                                // Toggle movement on/off
+                                                if (movingPlanet?.id === planet.id) {
+                                                    setMovingPlanet(null);
+                                                } else {
+                                                    setMovingPlanet(planet);
+                                                }
+                                            } else {
+                                                setSelectedPlanet(planet);
+                                            }
+                                        }}>
+                                            {!planet.image && <div className="absolute rounded-full blur-md opacity-50 group-hover:opacity-100 transition-opacity" style={{ backgroundColor: getFactionColor(planet.faction), transform: 'translate(-50%, -50%)', left: '50%', top: '50%', width: `${planetSize * 2}px`, height: `${planetSize * 2}px` }} />}
+                                            {planet.image ? (
+                                                <img src={planet.image} alt={planet.name} className={`relative group-hover:scale-110 transition-transform ${movingPlanet?.id === planet.id ? 'scale-125 ring-4 ring-yellow-400 rounded-full' : ''}`} style={{ width: `${planetSize}px`, height: `${planetSize}px`, objectFit: 'contain', filter: movingPlanet?.id === planet.id ? 'drop-shadow(0 0 8px rgba(251, 191, 36, 0.8))' : 'drop-shadow(0 0 4px rgba(0, 0, 0, 0.5))' }} />
+                                            ) : (
+                                                <div className={`relative rounded-full border-2 transition-all ${movingPlanet?.id === planet.id ? 'border-yellow-400 scale-150' : 'border-white group-hover:scale-125'}`} style={{ backgroundColor: getFactionColor(planet.faction), width: `${planetSize}px`, height: `${planetSize}px` }} />
+                                            )}
+                                            
+                                            {planet.events?.length > 0 && showEvents && (
+                                                <div className="absolute" style={{ top: '-8px', right: '-8px' }}>
+                                                    <Zap className="w-4 h-4 text-yellow-400 animate-pulse" />
+                                                </div>
+                                            )}
+                                            
+                                            <div className="absolute left-1/2 transform -translate-x-1/2 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity" style={{ top: `${planetSize / 2 + 8}px` }}>
+                                                <div className="bg-gray-900 border border-gray-700 px-2 py-1 rounded text-xs">{planet.name}</div>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+
+                        {/* Planet Detail Panel */}
+                        {selectedPlanet && (
+                            <div className="absolute top-4 right-4 w-96 bg-gray-900 border border-gray-700 rounded-lg shadow-2xl max-h-[calc(100vh-2rem)] overflow-y-auto">
+                                <div className="p-4 border-b border-gray-700 flex items-start justify-between sticky top-0 bg-gray-900 z-10">
+                                    <div className="flex items-center gap-3">
+                                        {selectedPlanet.image && <img src={selectedPlanet.image} alt={selectedPlanet.name} className="w-10 h-10 object-contain" />}
+                                        <div>
+                                            <h2 className="text-xl font-bold">{selectedPlanet.name}</h2>
+                                            <p className="text-sm text-gray-400">{selectedPlanet.coords}</p>
+                                        </div>
+                                    </div>
+                                    <div className="flex gap-2">
+                                        {editMode && editingPlanetId !== selectedPlanet.id && (
+                                            <>
+                                                <button 
+                                                    onClick={() => handleToggleLock(selectedPlanet.id)} 
+                                                    className={selectedPlanet.locked ? 'text-yellow-400 hover:text-yellow-300' : 'text-gray-400 hover:text-gray-300'}
+                                                    title={selectedPlanet.locked ? 'Unlock planet' : 'Lock planet'}
+                                                >
+                                                    {selectedPlanet.locked ? <Lock /> : <Unlock />}
+                                                </button>
+                                                <button onClick={() => handleStartEditPlanet(selectedPlanet)} className="text-blue-400 hover:text-blue-300"><Edit2 /></button>
+                                            </>
+                                        )}
+                                        <button onClick={() => setSelectedPlanet(null)} className="text-gray-400 hover:text-white"><X /></button>
+                                    </div>
+                                </div>
+
+                                <div className="p-4 space-y-3">
+                                    {editingPlanetId === selectedPlanet.id && editingPlanetData ? (
+                                        <div className="space-y-3 bg-gray-800 p-3 rounded">
+                                            <div className="text-sm font-semibold text-blue-400 mb-2">Editing Planet</div>
+                                            {['name', 'coords', 'population', 'rotationPeriod', 'atmosphere', 'climate', 'terrain'].map(field => (
+                                                <div key={field}>
+                                                    <label className="text-xs text-gray-400 mb-1 block capitalize">{field.replace(/([A-Z])/g, ' $1')}</label>
+                                                    <input type="text" value={editingPlanetData[field] || ''} onChange={(e) => setEditingPlanetData({ ...editingPlanetData, [field]: e.target.value })} className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded text-sm" />
+                                                </div>
+                                            ))}
+                                            <div>
+                                                <label className="text-xs text-gray-400 mb-1 block">Region</label>
+                                                <select value={editingPlanetData.region} onChange={(e) => setEditingPlanetData({ ...editingPlanetData, region: e.target.value })} className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded text-sm">
+                                                    {REGIONS.map(region => <option key={region} value={region}>{region}</option>)}
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <label className="text-xs text-gray-400 mb-1 block">Faction</label>
+                                                <input type="text" value={editingPlanetData.faction} onChange={(e) => setEditingPlanetData({ ...editingPlanetData, faction: e.target.value })} className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded text-sm" placeholder="e.g., New Republic" />
+                                            </div>
+                                            <div>
+                                                <label className="text-xs text-gray-400 mb-1 block">Size: {(editingPlanetData.size || 1.0).toFixed(1)}x</label>
+                                                <input type="range" min="0.3" max="2.5" step="0.1" value={editingPlanetData.size || 1.0} onChange={(e) => setEditingPlanetData({ ...editingPlanetData, size: parseFloat(e.target.value) })} className="w-full" />
+                                            </div>
+                                            <div>
+                                                <label className="text-xs text-gray-400 mb-1 block">Planet Image</label>
+                                                {editingPlanetData.image ? (
+                                                    <div className="flex items-center gap-2">
+                                                        <img src={editingPlanetData.image} alt={editingPlanetData.name} className="w-16 h-16 object-contain bg-gray-800 rounded p-1" />
+                                                        <button onClick={() => setEditingPlanetData({ ...editingPlanetData, image: null })} className="flex-1 px-3 py-2 bg-red-600 hover:bg-red-700 rounded text-xs">Remove Image</button>
+                                                    </div>
+                                                ) : (
+                                                    <button onClick={() => { setShowPlanetImageUpload('editing'); planetImageInputRef.current?.click(); }} className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-gray-700 hover:bg-gray-600 rounded text-xs"><Image /> Upload Planet Image (PNG)</button>
+                                                )}
+                                            </div>
+                                            <label className="flex items-center gap-2 text-sm">
+                                                <input type="checkbox" checked={editingPlanetData.trade} onChange={(e) => setEditingPlanetData({ ...editingPlanetData, trade: e.target.checked })} className="w-4 h-4" />
+                                                Trade Hub
+                                            </label>
+                                            <div className="flex gap-2 pt-2">
+                                                <button onClick={handleSaveEditPlanet} className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 rounded text-sm"><Check /> Save</button>
+                                                <button onClick={handleCancelEditPlanet} className="flex-1 px-4 py-2 bg-gray-600 hover:bg-gray-700 rounded text-sm">Cancel</button>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <>
+                                            <div className="flex items-center gap-2"><MapPin /><div><div className="text-xs text-gray-400">Region</div><div className="text-sm">{selectedPlanet.region}</div></div></div>
+                                            <div className="flex items-center gap-2"><Users /><div><div className="text-xs text-gray-400">Faction Control</div><div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full" style={{ backgroundColor: getFactionColor(selectedPlanet.faction) }} /><div className="text-sm">{selectedPlanet.faction}</div></div></div></div>
+                                            <div><div className="text-xs text-gray-400 mb-1">Population</div><div className="text-sm">{selectedPlanet.population}</div></div>
+                                            {selectedPlanet.rotationPeriod && <div><div className="text-xs text-gray-400 mb-1">Rotation Period</div><div className="text-sm">{selectedPlanet.rotationPeriod}</div></div>}
+                                            {selectedPlanet.atmosphere && <div><div className="text-xs text-gray-400 mb-1">Atmosphere</div><div className="text-sm">{selectedPlanet.atmosphere}</div></div>}
+                                            {selectedPlanet.climate && <div><div className="text-xs text-gray-400 mb-1">Climate</div><div className="text-sm">{selectedPlanet.climate}</div></div>}
+                                            {selectedPlanet.terrain && <div><div className="text-xs text-gray-400 mb-1">Terrain</div><div className="text-sm">{selectedPlanet.terrain}</div></div>}
+                                            {selectedPlanet.trade && <div className="bg-blue-900 bg-opacity-30 border border-blue-700 rounded p-2"><div className="text-xs text-blue-400">Major Trade Hub</div></div>}
+                                            
+                                            {/* Events Section */}
+                                            <div>
+                                                <div className="flex items-center justify-between mb-2">
+                                                    <div className="text-xs text-gray-400">Active Events</div>
+                                                    {editMode && (
+                                                        <button onClick={() => setShowEventForm(!showEventForm)} className="flex items-center gap-1 px-2 py-1 bg-green-600 hover:bg-green-700 rounded text-xs">
+                                                            <Plus /> Add
+                                                        </button>
+                                                    )}
+                                                </div>
+                                                
+                                                {showEventForm && editMode && (
+                                                    <div className="mb-2 space-y-2">
+                                                        <input type="text" placeholder="Event description" value={newEvent} onChange={(e) => setNewEvent(e.target.value)} className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-sm" />
+                                                        <div className="flex gap-2">
+                                                            <button onClick={handleAddEvent} className="flex-1 px-3 py-1 bg-green-600 hover:bg-green-700 rounded text-xs">Add Event</button>
+                                                            <button onClick={() => { setShowEventForm(false); setNewEvent(''); }} className="flex-1 px-3 py-1 bg-gray-600 hover:bg-gray-700 rounded text-xs">Cancel</button>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                                
+                                                <div className="space-y-2">
+                                                    {selectedPlanet.events?.length === 0 || !selectedPlanet.events ? (
+                                                        <div className="text-xs text-gray-500 italic">No active events</div>
+                                                    ) : (
+                                                        selectedPlanet.events.map((event, idx) => (
+                                                            <div key={idx} className="bg-yellow-900 bg-opacity-30 border border-yellow-700 rounded p-2">
+                                                                <div className="flex items-start justify-between gap-2">
+                                                                    <div className="flex items-center gap-2 flex-1">
+                                                                        <Zap className="w-4 h-4 text-yellow-400 flex-shrink-0" />
+                                                                        <div className="text-sm text-yellow-200">{event}</div>
+                                                                    </div>
+                                                                    {editMode && (
+                                                                        <button onClick={() => handleRemoveEvent(selectedPlanet.id, idx)} className="text-red-400 hover:text-red-300">
+                                                                            <X className="w-4 h-4" />
+                                                                        </button>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        ))
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="absolute bottom-4 right-4 bg-gray-900 border border-gray-700 rounded-lg p-2 space-y-2">
+                            <button onClick={() => setScale(Math.min(scale + 0.2, 3))} className="w-10 h-10 flex items-center justify-center hover:bg-gray-800 rounded">+</button>
+                            <button onClick={() => setScale(Math.max(scale - 0.2, 0.5))} className="w-10 h-10 flex items-center justify-center hover:bg-gray-800 rounded">−</button>
+                            <button onClick={() => { setScale(1); setPosition({ x: 0, y: 0 }); }} className="w-10 h-10 flex items-center justify-center hover:bg-gray-800 rounded"><Navigation /></button>
+                        </div>
+
+                        <div className="absolute top-4 left-4 bg-gray-900 border border-gray-700 rounded-lg p-3 text-xs text-gray-400">
+                            <div className="flex items-center gap-2 mb-1"><Info /><span>{movingPlanet ? 'Click planet again or map to stop moving' : editMode ? 'Edit mode: click planet to move, click again to stop' : 'Scroll to zoom • Drag to pan'}</span></div>
+                            <div>Planets: {filteredPlanets.length} / {planets.length}</div>
+                            {mapImage && <div className="text-green-400 mt-1">✓ Custom map loaded</div>}
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        ReactDOM.render(<StarWarsGalaxyMapEditor />, document.getElementById('root'));
+    </script>
+</body>
+</html>
